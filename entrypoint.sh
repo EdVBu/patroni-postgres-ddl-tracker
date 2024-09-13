@@ -53,5 +53,14 @@ kubernetes:
 __EOF__
 
 unset PATRONI_SUPERUSER_PASSWORD PATRONI_REPLICATION_PASSWORD
+/usr/bin/python3 /usr/local/bin/patroni /home/postgres/patroni.yml &
 
-exec /usr/bin/python3 /usr/local/bin/patroni /home/postgres/patroni.yml
+until psql -U postgres -c "SELECT 1" >/dev/null 2>&1; do
+    echo "Waiting for PostgreSQL to start..."
+    sleep 2
+done
+echo "PostgreSQL is ready, setting up the DDL tracker..."
+# Run the DDL tracker
+/ddl_tracker.sh &
+
+wait

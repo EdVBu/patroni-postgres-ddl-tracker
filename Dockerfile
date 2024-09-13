@@ -19,6 +19,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /
+COPY ddl_tracker.sh /ddl_tracker.sh
+RUN chmod +x /ddl_tracker.sh
 EXPOSE 5432 8008
 ENV LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 EDITOR=/usr/bin/editor
 USER postgres
