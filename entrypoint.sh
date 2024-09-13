@@ -7,6 +7,12 @@ if [[ $UID -ge 10000 ]]; then
     rm /tmp/passwd
 fi
 
+# Create the data directory if it doesn't exist
+if [ ! -d "/home/postgres/pgdata/pgroot/data" ]; then
+    mkdir -p /home/postgres/pgdata/pgroot/data
+    chown -R postgres:postgres /home/postgres/pgdata
+fi
+
 cat > /home/postgres/patroni.yml <<__EOF__
 bootstrap:
   dcs:
@@ -30,6 +36,7 @@ postgresql:
       password: '${PATRONI_SUPERUSER_PASSWORD}'
     replication:
       password: '${PATRONI_REPLICATION_PASSWORD}'
+  data_dir: '${PATRONI_POSTGRESQL_DATA_DIR}'  # Added data_dir here
 kubernetes:
   namespace: '${PATRONI_KUBERNETES_NAMESPACE}'
   labels:
@@ -37,7 +44,7 @@ kubernetes:
     cluster-name: patroni-postgres
   role_label: role
   pod_ip: ${PATRONI_KUBERNETES_POD_IP}
-  name: ${PATRONI_NAME}  # Adding the name key here
+  name: ${PATRONI_NAME}
 __EOF__
 
 unset PATRONI_SUPERUSER_PASSWORD PATRONI_REPLICATION_PASSWORD

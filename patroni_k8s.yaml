@@ -46,11 +46,25 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
+        - name: PATRONI_KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: PATRONI_KUBERNETES_BYPASS_API_SERVICE
+          value: 'true'
+        - name: PATRONI_KUBERNETES_USE_ENDPOINTS
+          value: 'true'
+        - name: PATRONI_KUBERNETES_LABELS
+          value: '{application: patroni, cluster-name: patroni-postgres}'
+        - name: PATRONI_SUPERUSER_USERNAME
+          value: postgres
         - name: PATRONI_SUPERUSER_PASSWORD
           valueFrom:
             secretKeyRef:
               name: patroni-postgres
               key: superuser-password
+        - name: PATRONI_REPLICATION_USERNAME
+          value: standby
         - name: PATRONI_REPLICATION_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -58,6 +72,19 @@ spec:
               key: replication-password
         - name: PATRONI_SCOPE
           value: patroni-postgres
+        - name: PATRONI_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: PATRONI_POSTGRESQL_DATA_DIR  # Corrected data_dir
+          value: /home/postgres/pgdata/pgroot/data
+        - name: PATRONI_POSTGRESQL_PGPASS
+          value: /tmp/pgpass
+        - name: PATRONI_POSTGRESQL_LISTEN
+          value: '0.0.0.0:5432'
+        - name: PATRONI_RESTAPI_LISTEN
+          value: '0.0.0.0:8008'
+
       terminationGracePeriodSeconds: 0
 
 ---
@@ -81,3 +108,68 @@ metadata:
   labels:
     application: patroni
     cluster-name: patroni-postgres
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: patroni-postgres-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - pods
+  - endpoints
+  - services
+  verbs:
+  - create
+  - get
+  - list
+  - update
+  - patch
+  - watch
+  - delete
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: patroni-postgres-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: patroni-postgres-role
+subjects:
+- kind: ServiceAccount
+  name: patroni-postgres
+  namespace: default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: patroni-k8s-ep-access
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  resourceNames:
+  - kubernetes
+  verbs:
+  - get
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: patroni-k8s-ep-access-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: patroni-k8s-ep-access
+subjects:
+- kind: ServiceAccount
+  name: patroni-postgres
+  namespace: default
