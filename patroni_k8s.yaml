@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: patroni-postgres-config
+  labels:
+    application: patroni
+    cluster-name: patroni-postgres
+spec:
+  clusterIP: None
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: patroni-postgres
+  labels:
+    application: patroni
+    cluster-name: patroni-postgres
+spec:
+  replicas: 3
+  serviceName: patroni-postgres
+  selector:
+    matchLabels:
+      application: patroni
+      cluster-name: patroni-postgres
+  template:
+    metadata:
+      labels:
+        application: patroni
+        cluster-name: patroni-postgres
+    spec:
+      serviceAccountName: patroni-postgres
+      containers:
+      - name: patroni-postgres
+        image: patroni-postgres  # Ensure the correct image is used
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 8008
+        ports:
+        - containerPort: 8008
+        - containerPort: 5432
+        env:
+        - name: PATRONI_KUBERNETES_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: PATRONI_SUPERUSER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: patroni-postgres
+              key: superuser-password
+        - name: PATRONI_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: patroni-postgres
+              key: replication-password
+        - name: PATRONI_SCOPE
+          value: patroni-postgres
+      terminationGracePeriodSeconds: 0
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: patroni-postgres
+  labels:
+    application: patroni
+    cluster-name: patroni-postgres
+type: Opaque
+data:
+  superuser-password: emFsYW5kbw==
+  replication-password: cmVwLXBhc3M=
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patroni-postgres
+  labels:
+    application: patroni
+    cluster-name: patroni-postgres
