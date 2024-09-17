@@ -72,7 +72,7 @@ kubectl apply -f patroni_k8s.yaml
 
 3. **Check the status of the pods**:
 ```bash
-kubectl apply -f patroni_k8s.yaml
+kubectl get pods -l application=patroni
 ```
 
 4. **Verify the logs of the leader pod**:
